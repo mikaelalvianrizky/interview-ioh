@@ -151,6 +151,7 @@ The 8 misses are listed in `results/self_assessment.md`.
 - Free-form text-to-SQL in the chatbot. Only one data question is supported, the rest are refused.
 - Authentication, rate limiting, pagination, response schemas. One read-only endpoint on synthetic data does not need them yet.
 - A slim image. It is 2.9 GB, mostly PyTorch.
+- A web or chat UI. The chatbot runs from the command line and the API has FastAPI's `/docs` page, which covers what a reviewer needs to try it.
 
 ## With more time
 
