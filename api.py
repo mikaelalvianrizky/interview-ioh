@@ -31,7 +31,7 @@ def is_dormant(days_since_last, avg_gap):
     """Dormant = no recharge for longer than twice the average gap. None when the gap is unknown."""
     if avg_gap is None:
         return None
-    return days_since_last > 2 * avg_gap
+    return days_since_last > 2 * avg_gap  # SUB0000001: 110 > 2 * 38.7 -> True
 
 
 def subscriber_summary(con, subscriber_id):
@@ -49,8 +49,8 @@ def subscriber_summary(con, subscriber_id):
 
     first = date.fromisoformat(summary["first_recharge"])
     last = date.fromisoformat(summary["last_recharge"])
-    days_since = (TODAY - last).days
-    avg_gap = (last - first).days / (n - 1) if n > 1 else None
+    days_since = (TODAY - last).days  # 2026-09-24 - 2026-06-06 -> 110
+    avg_gap = (last - first).days / (n - 1) if n > 1 else None  # 232 days / (7 - 1) -> 38.7
     summary.update(
         top_channel=con.execute(TOP_CHANNEL_SQL, (subscriber_id,)).fetchone()[0],
         days_since_last_recharge=days_since,

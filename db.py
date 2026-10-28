@@ -42,7 +42,7 @@ def connect():
 
 def _rows(name):
     with open(ROOT / "data" / name, newline="", encoding="utf-8") as f:
-        # Empty CSV cells become NULL so COUNT/AVG skip them.
+        # Empty CSV cells become NULL so COUNT/AVG skip them: package_bought "" -> None (14,131 rows).
         yield from ([v or None for v in row.values()] for row in csv.DictReader(f))
 
 
@@ -62,6 +62,7 @@ def run_queries(limit=15):
     con = connect()
     sql = (ROOT / "queries.sql").read_text(encoding="utf-8")
     for block in filter(str.strip, sql.split(";")):
+        # -> "-- Q1. Top 10 recharge amounts by total revenue, per channel."
         title = next(line for line in block.splitlines() if line.startswith("--"))
         cur = con.execute(block)
         rows = cur.fetchall()

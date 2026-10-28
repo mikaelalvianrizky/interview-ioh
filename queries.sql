@@ -8,6 +8,7 @@ WITH by_amount AS (
 )
 SELECT channel, revenue_rank, amount, transactions, revenue
 FROM (
+    -- E-Wallet: 100000 x 854 -> rank 1, 50000 x 1334 -> rank 2
     SELECT *, RANK() OVER (PARTITION BY channel ORDER BY revenue DESC) AS revenue_rank
     FROM by_amount
 )
@@ -34,6 +35,7 @@ bounds AS (
 SELECT m.month, m.segment, m.active_rechargers, m.revenue,
        ROUND(1.0 * m.revenue / m.active_rechargers) AS arppu,
        ROUND(1.0 * m.revenue / z.subscribers) AS arpu,
+       -- data 2025-09-24..2026-09-23: 2025-09 -> 1, 2025-10 -> 0, 2026-09 -> 1
        (m.month || '-01' < b.min_date
         OR DATE(m.month || '-01', '+1 month', '-1 day') > b.max_date) AS partial_month
 FROM monthly m
@@ -47,8 +49,8 @@ ORDER BY m.month, m.segment;
 WITH params AS (SELECT DATE('2026-09-24') AS today),
 per_sub AS (
     SELECT r.subscriber_id,
-           SUM(r.date > DATE(p.today, '-30 days')) AS recent,
-           SUM(r.date <= DATE(p.today, '-30 days')) AS previous
+           SUM(r.date > DATE(p.today, '-30 days')) AS recent,  -- 2026-08-26 -> recent
+           SUM(r.date <= DATE(p.today, '-30 days')) AS previous  -- 2026-08-25 -> previous
     FROM recharges r
     CROSS JOIN params p
     WHERE r.date > DATE(p.today, '-60 days') AND r.date <= p.today
@@ -67,7 +69,9 @@ WITH params AS (SELECT DATE('2026-09-24') AS today)
 SELECT s.subscriber_id, s.segment,
        COUNT(r.date) AS recharge_count,
        MAX(r.date) AS last_recharge,
+       -- SUB0000001: 2026-09-24 - 2026-06-06 -> 110
        CAST(julianday(p.today) - julianday(MAX(r.date)) AS INTEGER) AS days_since_last_recharge,
+       -- SUB0000001: (2026-06-06 - 2025-10-17) / (7 - 1) = 232 / 6 -> 38.7, 1 recharge -> NULL
        ROUND((julianday(MAX(r.date)) - julianday(MIN(r.date))) / NULLIF(COUNT(r.date) - 1, 0), 1)
            AS avg_gap_days
 FROM subscribers s

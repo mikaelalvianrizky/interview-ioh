@@ -79,6 +79,7 @@ TEXT = {
 
 
 def language(question):
+    # "Berapa harga paket 10GB...?" -> "id", "How many subscribers...?" -> "en"
     return "id" if ID_WORDS & set(re.findall(r"[a-z]+", question.lower())) else "en"
 
 
@@ -94,6 +95,7 @@ def parse_docs():
         elif heading.startswith("### "):
             name = heading.removeprefix("### ")
             # Indented lines continue the previous bullet, join them so long notes are not cut.
+            # "- **Price:** Rp 25.000" -> {"Price": "Rp 25.000"}
             fields = dict(re.findall(r"- \*\*(.+?):\*\* (.+)", re.sub(r"\n\s+", " ", body)))
             packages.append({"name": name, "family": family, **fields})
             chunks.append({"source": "product_catalog.md", "title": name, "text": f"{family}: {name}\n{body}"})
@@ -119,6 +121,7 @@ def index():
     chunks, packages = parse_docs()
     texts, owner = [], []
     for i, c in enumerate(chunks):
+        # "14. eSIM" -> 3 texts (section, "esim", "sim digital"), all owned by the same chunk
         for text in (c["text"], *ALIASES.get(c["title"], ())):
             texts.append(text)
             owner.append(i)
@@ -130,6 +133,7 @@ def search(question, k=2):
     """Top k chunks, each scored by its best vector (section text or one of its aliases)."""
     model, chunks, vectors, owner, _ = index()
     scores = np.full(len(chunks), -1.0)
+    # "ada esim ga?" vs the eSIM chunk: section 0.02, "esim" 0.74, "sim digital" 0.10 -> 0.74
     np.maximum.at(scores, owner, vectors @ model.encode(question, normalize_embeddings=True))
     top = np.argsort(-scores)[:k]
     return [(float(scores[i]), chunks[i]) for i in top]
@@ -139,12 +143,12 @@ def data_question(question):
     q = question.lower()
     asks_count = re.search(r"how many|berapa (banyak|orang|pelanggan)|jumlah|number of", q)
     about_people = re.search(r"subscriber|pelanggan|customer|user|pengguna|people|orang", q)
-    return bool(asks_count and about_people)
+    return bool(asks_count and about_people)  # "How many subscribers recharged last month?" -> True
 
 
 def recharged_last_month():
-    end = db.TODAY.replace(day=1) - timedelta(days=1)
-    start = end.replace(day=1)
+    end = db.TODAY.replace(day=1) - timedelta(days=1)  # 2026-09-24 -> 2026-08-31
+    start = end.replace(day=1)  # -> 2026-08-01
     with db.connect() as con:
         (n,) = con.execute(
             "SELECT COUNT(DISTINCT subscriber_id) FROM recharges WHERE date BETWEEN ? AND ?",
@@ -161,6 +165,7 @@ def answer_data(question, lang):
         return TEXT["data_unsupported"][lang]
     n, start, end = recharged_last_month()
     if lang == "id":
+        # -> "Agustus 2026", 3029 -> "3.029"
         month, count = f"{ID_MONTHS[start.month - 1]} {start.year}", f"{n:,}".replace(",", ".")
     else:
         month, count = start.strftime("%B %Y"), f"{n:,}"
@@ -175,18 +180,19 @@ def quota_gb(package):
 
 
 def validity_days(package):
-    found = re.match(r"(\d+) days?", package.get("Validity", ""))
+    found = re.match(r"(\d+) days?", package.get("Validity", ""))  # "30 days" -> 30
     return int(found[1]) if found else None
 
 
 def match_packages(question):
     """Packages whose main quota (and validity, if asked) match the numbers in the question."""
     q = question.lower()
-    gb = re.search(r"(\d+)\s*gb", q)
+    gb = re.search(r"(\d+)\s*gb", q)  # "10gb" -> 10
     if not gb:
         return []
-    days = re.search(r"(\d+)\s*(hari|days?)", q)
+    days = re.search(r"(\d+)\s*(hari|days?)", q)  # "30 hari" -> 30
     *_, packages = index()
+    # 10GB + 30 hari -> [Freedom Internet 10GB, IMClass Belajar 15GB]
     return [p for p in packages
             if quota_gb(p) == int(gb[1]) and (not days or validity_days(p) == int(days[1]))]
 
@@ -194,7 +200,7 @@ def match_packages(question):
 def format_package(p, lang):
     validity = p.get("Validity", "-")
     if lang == "id":
-        validity = validity.replace("days", "hari").replace("day", "hari")
+        validity = validity.replace("days", "hari").replace("day", "hari")  # "30 days" -> "30 hari"
     notes = f". {p['Notes']}" if "Notes" in p else ""  # keeps restrictions such as night-only quota
     return f"- {p['name']}: {p['Price']}, {p.get('Quota', '-')}, {validity}{notes} (product_catalog.md)"
 
@@ -207,6 +213,7 @@ def ask(question):
 
     hits = search(question)
     best = hits[0][0]
+    # "Who is the CEO of Indosat?" -> no topic word and 0.33 < 0.35 -> decline
     if best < MIN_SCORE or not DOMAIN_WORDS.search(question.lower()):
         return {"route": "decline", "score": best, "answer": TEXT["decline"][lang]}
 
