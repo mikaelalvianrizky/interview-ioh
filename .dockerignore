@@ -1,0 +1,5 @@
+.venv/
+.git/
+recharge.db
+__pycache__/
+.pytest_cache/
