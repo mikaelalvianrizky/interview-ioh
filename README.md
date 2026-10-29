@@ -4,13 +4,26 @@ SQL analysis over one year of prepaid recharges, an API that flags dormant subsc
 retrieval-only chatbot over the product catalog and policy FAQ. Everything runs locally: SQLite for
 the data, a small multilingual embedding model on CPU for the chatbot, no external API.
 
-## Run it (Docker, about 5 minutes)
+## Run it (Docker, about 5 minutes once Docker is installed)
 
-Needs only Docker Desktop (running). No Python or database install on your machine.
+Needs only Docker. No Python or database install on your machine.
 
-```bash
-docker compose up --build        # first build downloads ~1 GB and takes about 4 to 5 minutes
-```
+1. Install Docker if you don't have it:
+   - Windows or macOS: [Docker Desktop](https://docs.docker.com/get-started/get-docker/). On Windows it
+     runs on WSL 2, and the installer may ask for a restart.
+   - Linux: [Docker Engine](https://docs.docker.com/engine/install/) with the Compose plugin.
+2. Start Docker Desktop (Linux: the Docker service) and check that both commands print a version:
+
+   ```bash
+   docker --version
+   docker compose version
+   ```
+
+3. From the repository folder, build and start:
+
+   ```bash
+   docker compose up --build        # first build downloads ~1 GB and takes about 4 to 5 minutes
+   ```
 
 Then, in a second terminal:
 
